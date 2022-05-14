@@ -1,0 +1,5 @@
+server.ext
+saeko
+saeko.o
+libsaeko.a
+config.h
