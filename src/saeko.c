@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,16 +80,8 @@ int dig(char *path, char *dst, char *needle) {
 }
 
 char *mime(char *path) {
-  // char override[PATH_MAX] = { 0 };
-  // sprintf(override, ".%s.mime", path);
-  // if(dig(override, text, 0) != -1) return text;
-
   char *type = (char *) magic_file(cookie, path);
   if(!strncmp(type, "text/", 5)) return text;
-  syslog(LOG_INFO, "it's a <%s>", type);
-  // what the fuck, libmagic
-  if (!strncmp(type, "audio/mpegapplication/octet-stream", 34))
-    return "audio/mpeg";
   return type;
 }
 
@@ -155,7 +148,6 @@ int decode(char *src, char *dst) {
 void deliver(int server, char *buf, int len) {
   while(len > 0) {
     ssize_t ret = write(server, buf, len);
-    // if(ret == TLS_WANT_POLLIN || ret == TLS_WANT_POLLOUT) continue;
     if(ret == -1) errx(1, "write failed");
     buf += ret; len -= ret;
   }
@@ -292,7 +284,6 @@ int fallback(struct request *req, char *notfound) {
 }
 
 int route(struct request *req) {
-  // dig(".mime", text, 0);
   if(!req->path)  {
     char url[HEADER];
     snprintf(url, HEADER, "%s/", req->cwd);
@@ -317,6 +308,7 @@ int route(struct request *req) {
 }
 
 int saeko(struct request *req, char *url) {
+  syslog(LOG_INFO, "DEBUG [%s]", url);
   size_t eof = strspn(url, valid);
   if(url[eof]) return header(req, 4, "bad");
 
@@ -349,13 +341,15 @@ int saeko(struct request *req, char *url) {
   req->query = query;
   req->length = length;
   req->strlength = strlength;
+
+  syslog(LOG_INFO, "spartan://%s%s %s", domain, rawpath, req->ip);
+
   return route(req);
 }
 
 int main() {
   cookie = magic_open(MAGIC_MIME_TYPE);
   magic_load(cookie, 0);
-  // magic_setflags(cookie, MAGIC_MIME_TYPE);
   tzset();
 
   struct sockaddr_in6 addr;
@@ -363,11 +357,19 @@ int main() {
 
   bzero(&addr, sizeof(addr));
   addr.sin6_family = AF_INET6;
+  addr.sin6_addr = in6addr_loopback;
   addr.sin6_port = htons(300);
-  addr.sin6_addr = in6addr_any;
+
+  struct timeval timeout;
+  timeout.tv_sec = 10;
+
+  int opt = 1;
+  setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &opt, 4);
+  setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+  setsockopt(server, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 
   if(bind(server, (struct sockaddr *) &addr, (socklen_t) sizeof(addr)))
-    errx(1, "bind totally failed");
+    errx(1, "bind totally failed %d", errno);
 
   struct group *grp = { 0 };
   struct passwd *pwd = { 0 };
@@ -383,7 +385,7 @@ int main() {
   if(secure && chroot(root)) errx(1, "chroot failed");
   if(chdir(secure ? "/" : root)) errx(1, "chdir failed");
 
-  openlog(0, LOG_NDELAY, LOG_DAEMON);
+  openlog("saeko", LOG_NDELAY, LOG_DAEMON);
 
   if(group && grp && setgid(grp->gr_gid)) errx(1, "setgid failed");
   if(user && pwd && setuid(pwd->pw_uid)) errx(1, "setuid failed");
@@ -391,16 +393,7 @@ int main() {
   if(pledge("stdio inet proc dns exec rpath wpath cpath getpw unix flock", 0))
     errx(1, "pledge failed");
 
-
-  struct timeval timeout;
-  timeout.tv_sec = 10;
-
-  int opt = 1;
-  setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &opt, 4);
-  setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-  setsockopt(server, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-
-  listen(server, 10);
+  listen(server, 32);
 
   int sock;
   socklen_t len = sizeof(addr);
