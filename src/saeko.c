@@ -308,7 +308,6 @@ int route(struct request *req) {
 }
 
 int saeko(struct request *req, char *url) {
-  syslog(LOG_INFO, "DEBUG [%s]", url);
   size_t eof = strspn(url, valid);
   if(url[eof]) return header(req, 4, "bad");
 
