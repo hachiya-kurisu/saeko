@@ -24,6 +24,10 @@ saeko: config.h src/saeko.c
 install:
 	install saeko ${DESTDIR}${PREFIX}/bin/saeko
 
+push:
+	got send
+	git push
+ 
 clean:
 	rm -f saeko
 
