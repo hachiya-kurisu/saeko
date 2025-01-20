@@ -29,7 +29,7 @@ doc: README.md
 
 push:
 	got send
-	git push
+	git push github
  
 clean:
 	rm -f saeko
