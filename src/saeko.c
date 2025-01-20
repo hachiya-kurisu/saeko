@@ -1,7 +1,5 @@
 // see us after school for copyright and license details
 
-#define _PR_HAVE_LARGE_OFF_T
-
 #include <stdio.h>
 #include <ctype.h>
 #include <errno.h>
@@ -21,7 +19,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <magic.h>
 
 #define HEADER 1027
 #define BUFFER 65536
@@ -30,9 +27,28 @@ struct host {
   char *domain, *root;
 };
 
+struct mime {
+  char *ext;
+  char *type;
+};
+
+static const struct mime types[] = {
+  {".gmi", "text/gemini"},
+  {".txt", "text/plain"},
+  {".jpg", "image/jpeg"},
+  {".png", "image/png"},
+  {".gif", "image/gif"},
+  {".jxl", "image/jxl"},
+  {".webp", "image/webp"},
+  {".mp3", "audio/mpeg"},
+  {".m4a", "audio/mp4"},
+  {".mp4", "video/mp4"},
+  {".wav", "audio/wav"},
+  { 0, 0 },
+};
+
 #include "../config.h"
 
-magic_t cookie;
 const char *valid = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                     "abcdefghijklmnopqrstuvwxyz0123456789"
                     " -._~:/?#[]@!$&'()*+,;=%\r\n";
@@ -61,40 +77,14 @@ int setdomain(char *domain) {
   return 0;
 }
 
-int dig(char *path, char *dst, char *needle) {
-  FILE *fp = fopen(path, "r");
-  if(!fp) return -1;
-  char buf[LINE_MAX];
-  int retval = 0;
-  while(fgets(buf, LINE_MAX, fp)) {
-    buf[strcspn(buf, "\r\n")] = 0;
-    if(needle && !strcmp(buf, needle)) {
-      retval = 1;
-      break;
-    } else if(dst) {
-      strlcpy(dst, buf, LINE_MAX);
-      break;
+char *mime(char *path) {
+  char *ext = strrchr(path, '.');
+  for (int i = 0; types[i].ext != 0; i++) {
+    if(!strcasecmp(ext, types[i].ext)) {
+      return types[i].type;
     }
   }
-  fclose(fp);
-  return retval;
-}
-
-char *mime(char *path) {
-  char *type = (char *) magic_file(cookie, path);
-  if(!strncmp(type, "text/", 5)) return text;
-  return type;
-}
-
-void attr(const char *subject, char *key, char *dst) {
-  char needle[128] = { 0 };
-  snprintf(needle, 128, "/%s=", key);
-  char *found = strstr(subject, needle);
-  if(found) {
-    found += strlen(needle);
-    char *end = strchr(found, '/');
-    snprintf(dst, 128, "%.*s", (int) (end - found), found);
-  }
+  return "application/octet-stream";
 }
 
 void encode(char *src, char *dst) {
@@ -227,7 +217,7 @@ int ls(struct request *req) {
   stat("index.gmi", &sb);
   if(S_ISREG(sb.st_mode))
     return file(req, "index.gmi");
-  header(req, 2, text);
+  header(req, 2, "text/gemini");
   glob_t res;
   if(glob("*", GLOB_MARK, 0, &res)) {
     char *empty = "(*^o^*)\r\n";
@@ -347,9 +337,7 @@ int saeko(struct request *req, char *url) {
   return route(req);
 }
 
-int main() {
-  cookie = magic_open(MAGIC_MIME_TYPE);
-  magic_load(cookie, 0);
+int main(void) {
   tzset();
 
   struct sockaddr_in6 addr;
@@ -424,4 +412,3 @@ int main() {
   closelog();
   return 0;
 }
-

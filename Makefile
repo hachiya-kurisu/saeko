@@ -10,8 +10,6 @@ CFLAGS += -Wall -Wextra -std=c99 -pedantic -static
 PREFIX ?= /usr/local
 MANDIR ?= /share/man
 
-LIBS += -lmagic -lz
-
 all: saeko
 
 config.h:
