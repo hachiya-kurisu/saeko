@@ -167,19 +167,6 @@ void include(struct request *req, char *buf) {
   }
 }
 
-void process(struct request *req, int fd) {
-  FILE *fp = fdopen(fd, "r");
-  if(!fp) return;
-  char buf[LINE_MAX];
-  while(fgets(buf, LINE_MAX, fp)) {
-    if(!strncmp(buf, "$>", 2) && strlen(buf) > 2) {
-      include(req, &buf[2]);
-    } else {
-      deliver(req->client, buf, strlen(buf));
-    }
-  }
-}
-
 void transfer(struct request *req, int fd) {
   char buf[BUFFER] = { 0 };
   ssize_t len;
@@ -192,7 +179,6 @@ int file(struct request *req, char *path) {
   if(fd == -1) return header(req, 4, "not found");
   char *type = mime(path);
   header(req, 2, type);
-  (wild && !strncmp(type, "text/", 5)) ? process(req, fd) : transfer(req, fd);
   transfer(req, fd);
   close(fd);
   return 0;
