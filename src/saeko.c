@@ -266,7 +266,7 @@ int route(struct request *req) {
   if(!req->path)  {
     char url[HEADER];
     snprintf(url, HEADER, "%s/", req->cwd);
-    if(!strlen(url)) return header(req, 4, "bad request");
+    if(!strlen(url)) return header(req, 4, "invalid request");
     char safe[strlen(url) * 3 + 1];
     encode(url, safe);
     return header(req, 3, safe);
@@ -288,10 +288,10 @@ int route(struct request *req) {
 
 int saeko(struct request *req, char *url) {
   size_t eof = strspn(url, valid);
-  if(url[eof]) return header(req, 4, "bad");
+  if(url[eof]) return header(req, 4, "invalid request");
 
-  if(strlen(url) >= HEADER) return header(req, 4, "something bad happened");
-  if(strlen(url) <= 2) return header(req, 4, "bad request: no");
+  if(strlen(url) >= HEADER) return header(req, 4, "not found");
+  if(strlen(url) <= 2) return header(req, 4, "not found");
   if(url[strlen(url) - 2] != '\r' || url[strlen(url) - 1] != '\n')
     return 1;
   url[strcspn(url, "\r\n")] = 0;
@@ -303,7 +303,7 @@ int saeko(struct request *req, char *url) {
   char *strlength = url;
   long length = strtol(strlength, 0, 10);
 
-  if(!setdomain(domain)) return header(req, 4, "refused");
+  if(!setdomain(domain)) return header(req, 4, "not found");
 
   char cwd[HEADER] = "";
   char path[HEADER] = { 0 };
@@ -312,7 +312,7 @@ int saeko(struct request *req, char *url) {
   decode(rawpath, path);
 
   if(!*path || *path != '/' || strstr(path, "..") || strstr(path, "//"))
-    return header(req, 4, "nah");
+    return header(req, 4, "invalid request");
 
   req->cwd = cwd;
   req->path = path + 1;
