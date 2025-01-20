@@ -356,7 +356,7 @@ int main(void) {
   if(user && !(pwd = getpwnam(user)))
     errx(1, "user %s not found", user);
 
-  // daemon(0, 0);
+  daemon(0, 0);
 
   if(unveil(root, "rwxc")) errx(1, "unveil failed");
   if(chdir(root)) errx(1, "chdir failed");
