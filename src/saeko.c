@@ -36,6 +36,7 @@ static const struct mime types[] = {
   {".gmi", "text/gemini"},
   {".txt", "text/plain"},
   {".jpg", "image/jpeg"},
+  {".jpeg", "image/jpeg"},
   {".png", "image/png"},
   {".gif", "image/gif"},
   {".jxl", "image/jxl"},
