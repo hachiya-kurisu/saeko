@@ -20,8 +20,8 @@ $ rcctl start saeko
 ## the spartan world
 
 => spartan://spartan.mozz.us/ the spartan protocol homepage
-=> spartan://mozz.us/ sweet tools, links and information
+=> spartan://mozz.us/ sweet tools, links and information (mozz.us)
 
-=> spartan://higeki.jp/ my spartan space
-=> spartan://manatsu.town/ there's something happening here
+=> spartan://higeki.jp/ my spartan space (higeki.jp)
+=> spartan://manatsu.town/ there's something happening here (manatsu.town)
 
