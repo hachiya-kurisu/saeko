@@ -36,3 +36,5 @@ clean:
 
 again: clean all
 
+release: push
+	git push github --tags
