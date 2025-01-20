@@ -88,6 +88,7 @@ char *mime(char *path) {
 }
 
 void encode(char *src, char *dst) {
+  printf("%s\n", src);
   unsigned char *s = (unsigned char *) src;
   if(!strlen((char *) s)) {
     dst[0] = '\0';
@@ -100,7 +101,7 @@ void encode(char *src, char *dst) {
       skip[i] = strchr(valid, i) ? i : 0;
   }
   for(; *s; s++) {
-    if(skip[(int) *s]) snprintf(dst, 1, "%c", skip[(int) *s]), ++dst;
+    if(skip[(int) *s]) snprintf(dst, 2, "%c", skip[(int) *s]), ++dst;
     else {
       snprintf(dst, 3, "%%%02x", *s);
       while (*++dst);
@@ -369,10 +370,10 @@ int main(void) {
   if(user && !(pwd = getpwnam(user)))
     errx(1, "user %s not found", user);
 
-  daemon(0, 0);
+  // daemon(0, 0);
 
-  if(secure && chroot(root)) errx(1, "chroot failed");
-  if(chdir(secure ? "/" : root)) errx(1, "chdir failed");
+  if(unveil(root, "rwxc")) errx(1, "unveil failed");
+  if(chdir(root)) errx(1, "chdir failed");
 
   openlog("saeko", LOG_NDELAY, LOG_DAEMON);
 
