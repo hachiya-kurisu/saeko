@@ -1,5 +1,3 @@
-server.ext
-saeko
-saeko.o
-libsaeko.a
-config.h
+/saeko
+/saeko.o
+/config.h
