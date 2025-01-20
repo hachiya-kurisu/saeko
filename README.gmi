@@ -1,0 +1,27 @@
+# saeko
+
+a spartan spartan server 💪
+
+## mix the cocktail
+
+```sh
+$ make config.h
+$ vim config.h # tweak to your pleasure
+$ make && make install
+$ rcctl enable saeko
+$ rcctl start saeko
+```
+
+## tasting notes
+
+* saeko listens on ::1
+* combine with relayd to share with the world
+
+## the spartan world
+
+=> spartan://spartan.mozz.us/ the spartan protocol homepage
+=> spartan://mozz.us/ sweet tools, links and information
+
+=> spartan://higeki.jp/ my spartan space
+=> spartan://manatsu.town/ there's something happening here
+
