@@ -21,6 +21,7 @@ saeko: config.h src/saeko.c
 
 install:
 	install saeko ${DESTDIR}${PREFIX}/bin/saeko
+	install saeko.rc /etc/rc.d/saeko
 
 README.md: README.gmi
 	sisyphus -f markdown <README.gmi >README.md
