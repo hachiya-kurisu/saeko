@@ -10,11 +10,13 @@
 #include <limits.h>
 #include <signal.h>
 #include <syslog.h>
+#include <time.h>
 #include <grp.h>
 #include <pwd.h>
 #include <err.h>
 #include <glob.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -22,6 +24,21 @@
 
 #define HEADER 1027
 #define BUFFER 65536
+
+#ifndef __OpenBSD__
+int pledge(const char *promises, const char *execpromises) {
+  (void) promises;
+  (void) execpromises;
+  return 0;
+}
+
+int unveil(const char *path, const char *permissions) {
+  (void) path;
+  (void) permissions;
+  return 0;
+}
+#endif
+
 
 struct host {
   char *domain, *root;
