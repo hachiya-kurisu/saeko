@@ -97,16 +97,17 @@ int setdomain(char *domain) {
 
 char *mime(char *path) {
   char *ext = strrchr(path, '.');
+  if(!ext)
+    return fallback;
   for (int i = 0; types[i].ext != 0; i++) {
     if(!strcasecmp(ext, types[i].ext)) {
       return types[i].type;
     }
   }
-  return "application/octet-stream";
+  return fallback;
 }
 
 void encode(char *src, char *dst) {
-  printf("%s\n", src);
   unsigned char *s = (unsigned char *) src;
   if(!strlen((char *) s)) {
     dst[0] = '\0';
@@ -271,14 +272,6 @@ int cgi(struct request *req, char *path) {
   return 0;
 }
 
-int fallback(struct request *req, char *notfound) {
-  char path[LINE_MAX];
-  snprintf(path, LINE_MAX, "%s.gmi", notfound);
-  struct stat sb = { 0 };
-  stat(path, &sb);
-  return S_ISREG(sb.st_mode) ? file(req, path) : header(req, 4, "not found");
-}
-
 int route(struct request *req) {
   if(!req->path)  {
     char url[HEADER];
@@ -300,7 +293,7 @@ int route(struct request *req) {
     if(chdir(path)) return header(req, 4, "not found");
     return route(req);
   }
-  return S_ISREG(sb.st_mode) ? file(req, path) : fallback(req, path);
+  return S_ISREG(sb.st_mode) ? file(req, path) : header(req, 4, "not found");
 }
 
 int saeko(struct request *req, char *url) {
@@ -342,7 +335,15 @@ int saeko(struct request *req, char *url) {
   return route(req);
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
+  int debug = 0;
+  int c;
+  while((c = getopt(argc, argv, "d")) != -1) {
+    switch(c) {
+      case 'd': debug = 1;
+    }
+  }
+
   tzset();
 
   struct sockaddr_in6 addr;
@@ -374,7 +375,8 @@ int main(void) {
   if(user && !(pwd = getpwnam(user)))
     errx(1, "user %s not found", user);
 
-  daemon(0, 0);
+  if(!debug)
+    daemon(0, 0);
 
   if(unveil(root, "rwxc")) errx(1, "unveil failed");
   if(chdir(root)) errx(1, "chdir failed");
