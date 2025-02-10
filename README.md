@@ -2,6 +2,8 @@
 
 spartan spartan server 💪
 
+named after nogami saeko (野上冴子) from city hunter
+
 ## mix the cocktail
 
 ```
