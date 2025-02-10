@@ -1,6 +1,6 @@
 # saeko
 
-a spartan spartan server 💪
+spartan spartan server 💪
 
 ## mix the cocktail
 

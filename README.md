@@ -1,6 +1,6 @@
 # saeko
 
-a spartan spartan server 💪
+spartan spartan server 💪
 
 ## mix the cocktail
 
@@ -16,4 +16,12 @@ $ rcctl start saeko
 
 * saeko listens on ::1
 * combine with relayd to share with the world
+
+## the spartan world
+
+[the spartan protocol homepage](spartan://spartan.mozz.us/)
+[sweet tools, links and information (mozz.us)](spartan://mozz.us/)
+
+[my spartan space (higeki.jp)](spartan://higeki.jp/)
+[there's something happening here (manatsu.town)](spartan://manatsu.town/)
 
