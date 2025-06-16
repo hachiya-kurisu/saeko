@@ -1,10 +1,22 @@
 # saeko
 
-spartan spartan server 💪
+a spartan spartan server 💪
+
+no wind tonight
+no rain
+no tears
+not yet
+yes, tonight will be a good night
 
 named after nogami saeko (野上冴子) from city hunter
+ 
+made for openbsd, might work elsewhere
 
-## mix the cocktail
+## the important thing is the rhythm
+
+first, hit play on GET WILD by TM NETWORK.
+feel the city's pulse kicking in, then... let's get moving.
+you've got until the song finishes, so no distractions, ok?
 
 ```sh
 $ make config.h
@@ -14,7 +26,7 @@ $ rcctl enable saeko
 $ rcctl start saeko
 ```
 
-## tasting notes
+## take a sip if you understand
 
 * saeko listens on ::1
 * combine with relayd to share with the world
@@ -22,8 +34,6 @@ $ rcctl start saeko
 ## the spartan world
 
 => spartan://spartan.mozz.us/ the spartan protocol homepage
-=> spartan://mozz.us/ sweet tools, links and information (mozz.us)
 
-=> spartan://higeki.jp/ my spartan space (higeki.jp)
-=> spartan://manatsu.town/ there's something happening here (manatsu.town)
-
+=> spartan://higeki.jp/ my spartan space
+=> spartan://manatsu.town/ there's something happening here
