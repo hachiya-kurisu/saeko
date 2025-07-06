@@ -73,7 +73,7 @@ const char *valid = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                     " -._~:/?#[]@!$&'()*+,;=%\r\n";
 
 struct request {
-  int client;
+  int socket;
   time_t time;
   char url[HEADER];
   int ongoing;
@@ -171,7 +171,7 @@ int header(struct request *req, int status, char *meta) {
   if(strlen(meta) > 1024) return 1;
   char buf[HEADER];
   int len = snprintf(buf, HEADER, "%d %s\r\n", status, *meta ? meta : "");
-  deliver(req->client, buf, len);
+  deliver(req->socket, buf, len);
   req->ongoing = 1;
   return 0;
 }
@@ -192,7 +192,7 @@ void transfer(struct request *req, int fd) {
   char buf[BUFFER] = {0};
   ssize_t len;
   while((len = read(fd, buf, BUFFER)) != 0)
-    deliver(req->client, buf, len);
+    deliver(req->socket, buf, len);
 }
 
 int file(struct request *req, char *path) {
@@ -215,7 +215,7 @@ void entry(struct request *req, char *path) {
   char *type = mime(path);
   int len = snprintf(buf, PATH_MAX * 2, "=> %s %s [%s %.2f KB]\n",
       safe, path, type, size);
-  deliver(req->client, buf, len);
+  deliver(req->socket, buf, len);
 }
 
 int ls(struct request *req) {
@@ -227,7 +227,7 @@ int ls(struct request *req) {
   glob_t res;
   if(glob("*", GLOB_MARK, 0, &res)) {
     char *empty = "(*^o^*)\r\n";
-    deliver(req->client, empty, strlen(empty));
+    deliver(req->socket, empty, strlen(empty));
     return 0;
   }
   for(size_t i = 0; i < res.gl_pathc; i++) {
@@ -265,7 +265,7 @@ int cgi(struct request *req, char *path) {
   char buf[BUFFER] = {0};
   ssize_t len;
   while((len = read(fd[0], buf, BUFFER)) != 0) {
-    deliver(req->client, buf, len);
+    deliver(req->socket, buf, len);
   }
   kill(pid, SIGTERM);
   int status;
@@ -399,6 +399,8 @@ int main(int argc, char *argv[]) {
 
   listen(server, 32);
 
+  signal(SIGCHLD, SIG_IGN);
+
   int sock;
   socklen_t len = sizeof(addr);
   while((sock = accept(server, (struct sockaddr *) &addr, &len)) > -1) {
@@ -420,13 +422,13 @@ int main(int argc, char *argv[]) {
 
       char ip[INET6_ADDRSTRLEN];
       inet_ntop(AF_INET6, &addr, ip, INET6_ADDRSTRLEN);
-      req.client = sock;
+      req.socket = sock;
       req.ip = ip;
       saeko(&req, url);
       close(sock);
+      _exit(0);
     } else {
       close(sock);
-      signal(SIGCHLD, SIG_IGN);
     }
   }
   close(server);
