@@ -269,8 +269,13 @@ int cgi(struct request *req, char *path) {
   while((len = read(fd[0], buf, BUFFER)) != 0) {
     deliver(req->client, buf, len);
   }
-  kill(pid, SIGKILL);
-  wait(0);
+  kill(pid, SIGTERM);
+  int status;
+  if(waitpid(pid, &status, WNOHANG) == 0) {
+    sleep(1);
+    kill(pid, SIGKILL);
+    waitpid(pid, &status, 0);
+  }
   return 0;
 }
 
@@ -291,7 +296,10 @@ int route(struct request *req) {
   if(S_ISREG(sb.st_mode) && sb.st_mode & S_IXOTH) 
     return cgi(req, path);
   if(S_ISDIR(sb.st_mode)) {
-    snprintf(req->cwd + strlen(req->cwd), LINE_MAX, "/%s", path);
+    size_t current = strlen(req->cwd);
+    int bytes = snprintf(req->cwd + current, LINE_MAX - current, "/%s", path);
+    if(bytes >= (int)(LINE_MAX - current))
+      return header(req, 4, "path too long");
     if(chdir(path)) return header(req, 4, "not found");
     return route(req);
   }
@@ -402,10 +410,16 @@ int main(int argc, char *argv[]) {
       close(server);
       struct request req = {0};
       char url[HEADER] = {0};
-      if(read(sock, url, HEADER) == -1) {
+      ssize_t bytes = read(sock, url, HEADER - 1);
+      if(bytes <= 0) {
         close(sock);
-        errx(1, "read failed");
+        if(bytes == 0)
+          errx(1, "disconnected");
+        else
+          errx(1, "read failed");
       }
+      url[bytes] = '\0';
+
       char ip[INET6_ADDRSTRLEN];
       inet_ntop(AF_INET6, &addr, ip, INET6_ADDRSTRLEN);
       req.client = sock;
