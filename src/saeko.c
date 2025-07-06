@@ -41,7 +41,8 @@ int unveil(const char *path, const char *permissions) {
 
 
 struct host {
-  char *domain, *root;
+  char *domain;
+  char  *root;
 };
 
 struct mime {
@@ -113,7 +114,7 @@ void encode(char *src, char *dst) {
     dst[0] = '\0';
     return;
   }
-  static char skip[256] = { 0 };
+  static char skip[256] = {0};
   if(!skip[(int) '-']) {
     unsigned int i;
     for(i = 0; i < 256; i++)
@@ -122,15 +123,16 @@ void encode(char *src, char *dst) {
   for(; *s; s++) {
     if(skip[(int) *s]) snprintf(dst, 2, "%c", skip[(int) *s]), ++dst;
     else {
-      snprintf(dst, 3, "%%%02x", *s);
-      while (*++dst);
+      snprintf(dst, 4, "%%%02x", *s);
+      dst += 3;
     }
   }
+  *dst = '\0';
 }
 
 int decode(char *src, char *dst) {
   int pos = 0;
-  char buf[3] = { 0 };
+  char buf[3] = {0};
   unsigned int decoded;
   while(src && *src) {
     buf[pos] = *src;
@@ -177,7 +179,7 @@ int header(struct request *req, int status, char *meta) {
 void include(struct request *req, char *buf) {
   buf += strspn(buf, " \t");
   buf[strcspn(buf, "\r\n")] = 0;
-  struct stat sb = { 0 };
+  struct stat sb = {0};
   stat(buf, &sb);
   if(S_ISREG(sb.st_mode) && sb.st_mode & S_IXOTH) {
     cgi(req, buf);
@@ -187,7 +189,7 @@ void include(struct request *req, char *buf) {
 }
 
 void transfer(struct request *req, int fd) {
-  char buf[BUFFER] = { 0 };
+  char buf[BUFFER] = {0};
   ssize_t len;
   while((len = read(fd, buf, BUFFER)) != 0)
     deliver(req->client, buf, len);
@@ -204,7 +206,7 @@ int file(struct request *req, char *path) {
 }
 
 void entry(struct request *req, char *path) {
-  struct stat sb = { 0 };
+  struct stat sb = {0};
   stat(path, &sb);
   double size = sb.st_size / 1000.0;
   char full[PATH_MAX];
@@ -219,7 +221,7 @@ void entry(struct request *req, char *path) {
 }
 
 int ls(struct request *req) {
-  struct stat sb = { 0 };
+  struct stat sb = {0};
   stat("index.gmi", &sb);
   if(S_ISREG(sb.st_mode))
     return file(req, "index.gmi");
@@ -262,7 +264,7 @@ int cgi(struct request *req, char *path) {
   }
   close(fd[1]);
 
-  char buf[BUFFER] = { 0 };
+  char buf[BUFFER] = {0};
   ssize_t len;
   while((len = read(fd[0], buf, BUFFER)) != 0) {
     deliver(req->client, buf, len);
@@ -284,7 +286,7 @@ int route(struct request *req) {
   if(!strcspn(req->path, "/")) return ls(req);
 
   char *path = strsep(&req->path, "/");
-  struct stat sb = { 0 };
+  struct stat sb = {0};
   stat(path, &sb);
   if(S_ISREG(sb.st_mode) && sb.st_mode & S_IXOTH) 
     return cgi(req, path);
@@ -316,8 +318,8 @@ int saeko(struct request *req, char *url) {
   if(!setdomain(domain)) return header(req, 4, "not found");
 
   char cwd[HEADER] = "";
-  char path[HEADER] = { 0 };
-  char query[HEADER] = { 0 };
+  char path[HEADER] = {0};
+  char query[HEADER] = {0};
 
   decode(rawpath, path);
 
@@ -366,8 +368,8 @@ int main(int argc, char *argv[]) {
   if(bind(server, (struct sockaddr *) &addr, (socklen_t) sizeof(addr)))
     errx(1, "bind totally failed %d", errno);
 
-  struct group *grp = { 0 };
-  struct passwd *pwd = { 0 };
+  struct group *grp = {0};
+  struct passwd *pwd = {0};
 
   if(group && !(grp = getgrnam(group)))
     errx(1, "group %s not found", group);
@@ -398,8 +400,8 @@ int main(int argc, char *argv[]) {
     if(pid == -1) errx(1, "fork failed");
     if(!pid) {
       close(server);
-      struct request req = { 0 };
-      char url[HEADER] = { 0 };
+      struct request req = {0};
+      char url[HEADER] = {0};
       if(read(sock, url, HEADER) == -1) {
         close(sock);
         errx(1, "read failed");
