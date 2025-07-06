@@ -22,7 +22,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
-#define HEADER 1027
+#define HEADER 1028
 #define BUFFER 65536
 
 #ifndef __OpenBSD__
@@ -209,8 +209,6 @@ void entry(struct request *req, char *path) {
   struct stat sb = {0};
   stat(path, &sb);
   double size = sb.st_size / 1000.0;
-  char full[PATH_MAX];
-  snprintf(full, PATH_MAX, "%s/%s", req->cwd, path);
   char buf[PATH_MAX * 2];
   char safe[strlen(path) * 3 + 1];
   encode(path, safe);
