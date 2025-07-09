@@ -37,3 +37,7 @@ $ rcctl start saeko
 
 => spartan://higeki.jp/ my spartan space
 => spartan://manatsu.town/ there's something happening here
+
+## author
+
+=> https://blekksprut.net/ 蜂谷栗栖
