@@ -180,32 +180,24 @@ static int cgi(struct request *req, char *path) {
   setenv("REMOTE_HOST", req->ip, 1);
   setenv("SERVER_PROTOCOL", "spartan", 1);
 
-  int fd[2];
-  pipe(fd);
+  char len[32];
+  snprintf(len, sizeof(len), "%ld", req->length);
+  setenv("CONTENT_LENGTH", len, 1);
 
   pid_t pid = fork();
   if(pid == -1) errx(1, "fork failed");
 
   if(!pid) {
-    dup2(fd[1], 1);
-    close(fd[0]);
+    dup2(req->socket, 0);
+    dup2(req->socket, 1);
+    close(req->socket);
     char *argv[] = { path, 0 };
     execv(path, argv);
+    _exit(1);
   }
-  close(fd[1]);
 
-  char buf[BUFFER] = {0};
-  ssize_t len;
-  while((len = read(fd[0], buf, BUFFER)) > 0) {
-    deliver(req->socket, buf, len);
-  }
-  kill(pid, SIGTERM);
   int status;
-  if(waitpid(pid, &status, WNOHANG) == 0) {
-    sleep(1);
-    kill(pid, SIGKILL);
-    waitpid(pid, &status, 0);
-  }
+  waitpid(pid, &status, 0);
   return 0;
 }
 
