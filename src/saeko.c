@@ -73,14 +73,18 @@ int main(int argc, char *argv[]) {
   if(server == -1)
     errx(1, "socket failed");
 
-  struct timeval timeout;
+  struct timeval timeout = {0};
   timeout.tv_sec = 10;
 
   int opt = 1;
-  setsockopt(server, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
-  setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-  setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-  setsockopt(server, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+  if(setsockopt(server, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt)) == -1)
+    errx(1, "setsockopt TCP_NODELAY failed");
+  if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
+    errx(1, "setsockopt SO_REUSEADDR failed");
+  if(setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
+    errx(1, "setsockopt SO_RCVTIMEO failed");
+  if(setsockopt(server, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) == -1)
+    errx(1, "setsockopt SO_SNDTIMEO failed");
 
   if(bind(server, res->ai_addr, res->ai_addrlen))
     errx(1, "bind failed: %s", strerror(errno));
@@ -112,7 +116,7 @@ int main(int argc, char *argv[]) {
 
   if(listen(server, backlog)) errx(1, "listen failed");
 
-  if(!debug) fprintf(stderr, "listening on %s:%s\n", addr, port);
+  if(debug) fprintf(stderr, "listening on %s:%s\n", addr, port);
 
   signal(SIGCHLD, SIG_IGN);
 
@@ -149,7 +153,7 @@ int main(int argc, char *argv[]) {
 
       req.socket = sock;
       req.ip = ip;
-      if(!debug) fprintf(stderr, "request to %s", url);
+      if(debug) fprintf(stderr, "request to %s", url);
       spartan(&req, url, shared);
       close(sock);
       _exit(0);

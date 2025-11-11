@@ -210,7 +210,7 @@ static int route(struct request *req) {
     encode(url, safe);
     return header(req, 3, safe);
   }
-  if(!strcspn(req->path, "/")) return ls(req);
+  if(*req->path == '\0') return ls(req);
 
   char *path = strsep(&req->path, "/");
   struct stat sb = {0};
