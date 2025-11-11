@@ -40,4 +40,4 @@ $ rcctl start saeko
 
 ## author
 
-[蜂谷栗栖](https://blekksprut.net/)
+[蜂谷栗栖](//blekksprut.net/)
