@@ -25,8 +25,8 @@
 const int backlog = 32;
 
 char *root = "/var/spartan";
-char *user = "spartan";
-char *group = "spartan";
+char *user = "www";
+char *group = "www";
 
 char *addr = "::1";
 char *port = "300";
@@ -73,17 +73,16 @@ int main(int argc, char *argv[]) {
   if(server == -1)
     errx(1, "socket failed");
 
-  struct timeval timeout = {0};
-  timeout.tv_sec = 10;
+  struct timeval tv = {.tv_sec = 10};
 
   int opt = 1;
   if(setsockopt(server, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt)) == -1)
     errx(1, "setsockopt TCP_NODELAY failed");
   if(setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1)
     errx(1, "setsockopt SO_REUSEADDR failed");
-  if(setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
+  if(setsockopt(server, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1)
     errx(1, "setsockopt SO_RCVTIMEO failed");
-  if(setsockopt(server, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout)) == -1)
+  if(setsockopt(server, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) == -1)
     errx(1, "setsockopt SO_SNDTIMEO failed");
 
   if(bind(server, res->ai_addr, res->ai_addrlen))
@@ -110,31 +109,28 @@ int main(int argc, char *argv[]) {
 #ifdef __OpenBSD__
   if(!debug) daemon(0, 0);
   if(unveil(root, "rwxc")) errx(1, "unveil failed");
-  if(pledge("stdio inet proc dns exec rpath wpath cpath getpw unix flock", 0))
-    errx(1, "pledge failed");
-#endif
-
-  if(listen(server, backlog)) errx(1, "listen failed");
-
-  if(debug) fprintf(stderr, "listening on %s:%s\n", addr, port);
-
-#ifdef __OpenBSD__
   if(pledge("stdio inet proc exec rpath wpath cpath unix flock", 0))
     errx(1, "pledge failed");
 #endif
 
-  signal(SIGCHLD, SIG_IGN);
+  if(listen(server, backlog)) errx(1, "listen failed");
+  if(debug) fprintf(stderr, "listening on %s:%s\n", addr, port);
 
-  int sock;
+  signal(SIGCHLD, SIG_IGN);
 
   struct sockaddr_storage client;
   socklen_t len = sizeof(client);
 
+  int sock;
   while((sock = accept(server, (struct sockaddr *) &client, &len)) > -1) {
     pid_t pid = fork();
     if(pid == -1) errx(1, "fork failed");
     if(!pid) {
       close(server);
+      struct timeval tv = {.tv_sec = 10};
+      setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+      setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
       struct request req = {0};
       char url[HEADER] = {0};
       ssize_t bytes = read(sock, url, HEADER - 1);
