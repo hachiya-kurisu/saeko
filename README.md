@@ -19,8 +19,6 @@ feel the city's pulse kicking in, then... let's get moving.
 you've got until the song finishes, so no distractions, ok?
 
 ```
-$ make config.h
-$ vim config.h # tweak to your pleasure
 $ make && make install
 $ rcctl enable saeko
 $ rcctl start saeko
