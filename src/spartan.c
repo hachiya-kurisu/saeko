@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <err.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <glob.h>
 #include <limits.h>
@@ -126,19 +127,16 @@ static int header(struct request *req, int status, char *meta) {
   return 0;
 }
 
-static void transfer(const struct request *req, int fd) {
-  char buf[BUFFER] = {0};
-  ssize_t len;
-  while((len = read(fd, buf, BUFFER)) > 0)
-    deliver(req->socket, buf, len);
-}
-
 static int file(struct request *req, char *path) {
   int fd = open(path, O_RDONLY);
   if(fd == -1) return header(req, 4, "not found");
   char *type = mime(path);
   header(req, 2, type);
-  transfer(req, fd);
+
+  char buf[BUFFER] = {0};
+  ssize_t ret;
+  while((ret = read(fd, buf, BUFFER)) > 0) deliver(req->socket, buf, ret);
+  if(ret == -1) errx(1, "read error: %s", strerror(errno));
   close(fd);
   return 0;
 }
@@ -171,6 +169,7 @@ static int ls(struct request *req) {
   for(size_t i = 0; i < res.gl_pathc; i++) {
     entry(req, res.gl_pathv[i]);
   }
+  globfree(&res);
   return 0;
 }
 
@@ -229,7 +228,7 @@ static int route(struct request *req) {
     if(chdir(path)) return header(req, 4, "not found");
     return route(req);
   }
-  return S_ISREG(sb.st_mode) ? file(req, path) : header(req, 4, "not found");
+  return file(req, path);
 }
 
 int spartan(struct request *req, char *url, int shared) {
