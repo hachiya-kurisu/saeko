@@ -127,7 +127,6 @@ int main(int argc, char *argv[]) {
     if(pid == -1) errx(1, "fork failed");
     if(!pid) {
       close(server);
-      struct timeval tv = {.tv_sec = 10};
       setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
       setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 
