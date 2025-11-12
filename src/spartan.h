@@ -6,13 +6,6 @@
 #define HEADER 1028
 #define BUFFER 65536
 
-// a spartan host
-struct host {
-  char *domain;
-  char *root;
-};
-
-
 // a spartan request
 struct request {
   int socket;
@@ -27,7 +20,7 @@ struct request {
 };
 
 // handles a spartan request and sends a response
-// returns 0 on success, -1 on error
+// returns 0 on success, 1 on error
 int spartan(struct request *req, char *url, int shared);
 
 #endif
