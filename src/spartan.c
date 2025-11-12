@@ -121,6 +121,8 @@ static int header(struct request *req, int status, char *meta) {
   int len = snprintf(buf, HEADER, "%d %s\r\n", status, *meta ? meta : "");
   deliver(req->socket, buf, len);
   req->ongoing = 1;
+  if(status != 2)
+    syslog(LOG_WARNING, "status %d: %s from %s", status, meta, req->ip);
   return 0;
 }
 
@@ -192,6 +194,7 @@ static int cgi(struct request *req, char *path) {
     dup2(req->socket, 1);
     close(req->socket);
     char *argv[] = { path, 0 };
+    alarm(30);
     execv(path, argv);
     _exit(1);
   }

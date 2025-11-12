@@ -104,8 +104,8 @@ int main(int argc, char *argv[]) {
 
   openlog("saeko", LOG_NDELAY, LOG_DAEMON);
 
-  if(group && grp && setgid(grp->gr_gid)) errx(1, "setgid failed");
-  if(user && pwd && setuid(pwd->pw_uid)) errx(1, "setuid failed");
+  if(group && setgid(grp->gr_gid)) errx(1, "setgid failed");
+  if(user && setuid(pwd->pw_uid)) errx(1, "setuid failed");
 
 #ifdef __OpenBSD__
   if(!debug) daemon(0, 0);
@@ -154,7 +154,8 @@ int main(int argc, char *argv[]) {
       } else {
         ptr = &((struct sockaddr_in6 *)&client)->sin6_addr;
       }
-      inet_ntop(client.ss_family, ptr, ip, INET6_ADDRSTRLEN);
+      if(!inet_ntop(client.ss_family, ptr, ip, INET6_ADDRSTRLEN))
+        errx(1, "inet_ntop failed");
 
       req.socket = sock;
       req.ip = ip;
