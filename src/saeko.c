@@ -31,6 +31,7 @@ char *group = "www";
 char *addr = "::1";
 char *port = "300";
 
+int debug = 0;
 int shared = 0;
 
 char *flags = "[-ds] [-u user] [-g group] [-a address] [-p port] [-r root]";
@@ -40,7 +41,6 @@ static void usage(const char *name) {
 }
 
 int main(int argc, char *argv[]) {
-  int debug = 0;
   int c;
   while((c = getopt(argc, argv, "dhsu:g:a:p:r:")) != -1) {
     switch(c) {
@@ -114,7 +114,6 @@ int main(int argc, char *argv[]) {
 #endif
 
   if(listen(server, backlog)) errx(1, "listen failed");
-  if(debug) fprintf(stderr, "listening on %s:%s\n", addr, port);
 
   signal(SIGCHLD, SIG_IGN);
 
@@ -154,7 +153,6 @@ int main(int argc, char *argv[]) {
 
       req.socket = sock;
       req.ip = ip;
-      if(debug) fprintf(stderr, "request to %s", url);
       spartan(&req, url, shared);
       close(sock);
       _exit(0);
