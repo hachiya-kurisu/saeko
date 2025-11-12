@@ -252,11 +252,11 @@ int spartan(struct request *req, char *url, int shared) {
 
   char *domain = strsep(&url, " ");
   char *rawpath = strsep(&url, " ");
-  if(!domain || !rawpath) return header(req, 4, "not found");
-  if(!shared && chdir(domain)) return header(req, 4, "not found");
+  if(!domain || !rawpath) return header(req, 4, "invalid request");
+  if(!shared && chdir(domain)) return header(req, 4, "invalid request");
+  if(!url) return header(req, 4, "invalid request");
 
-  const char *strlength = url;
-  long length = strtol(strlength, 0, 10);
+  long length = strtol(url, 0, 10);
 
   decode(rawpath, path);
 
