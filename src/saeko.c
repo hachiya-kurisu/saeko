@@ -118,6 +118,11 @@ int main(int argc, char *argv[]) {
 
   if(debug) fprintf(stderr, "listening on %s:%s\n", addr, port);
 
+#ifdef __OpenBSD__
+  if(pledge("stdio inet proc exec rpath wpath cpath unix flock", 0))
+    errx(1, "pledge failed");
+#endif
+
   signal(SIGCHLD, SIG_IGN);
 
   int sock;
