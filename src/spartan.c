@@ -43,9 +43,9 @@ const char *valid = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                     "abcdefghijklmnopqrstuvwxyz0123456789"
                     " -._~:/?#[]@!$&'()*+,;=%\r\n";
 
-char *fallback = "application/octet-stream";
+const char *fallback = "application/octet-stream";
 
-static char *mime(const char *path) {
+static const char *mime(const char *path) {
   char *ext = strrchr(path, '.');
   if(!ext)
     return fallback;
@@ -115,7 +115,7 @@ static void deliver(int server, char *buf, int len) {
   }
 }
 
-static int header(struct request *req, int status, char *meta) {
+static int header(struct request *req, int status, const char *meta) {
   if(req->ongoing) return 1;
   if(strlen(meta) > 1024) return 1;
   char buf[HEADER];
@@ -130,7 +130,7 @@ static int header(struct request *req, int status, char *meta) {
 static int file(struct request *req, char *path) {
   int fd = open(path, O_RDONLY);
   if(fd == -1) return header(req, 4, "not found");
-  char *type = mime(path);
+  const char *type = mime(path);
   header(req, 2, type);
 
   char buf[BUFFER] = {0};

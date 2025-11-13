@@ -1,10 +1,10 @@
 #ifndef SPARTAN_H
 #define SPARTAN_H
 
-#include <time.h>
-
 #define HEADER 1028
 #define BUFFER 65536
+
+#include <time.h>
 
 // a spartan request
 struct request {

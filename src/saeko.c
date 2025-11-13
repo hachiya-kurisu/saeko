@@ -34,7 +34,7 @@ char *port = "300";
 int debug = 0;
 int shared = 0;
 
-char *flags = "[-ds] [-u user] [-g group] [-a address] [-p port] [-r root]";
+char *flags = "[-dhs] [-u user] [-g group] [-a address] [-p port] [-r root]";
 
 static void usage(const char *name) {
   fprintf(stderr, "usage: %s %s\n", name, flags);
