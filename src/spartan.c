@@ -253,7 +253,7 @@ int spartan(int sock, char *url, int shared) {
   req.time = time(0);
 
   char *domain = strsep(&url, " ");
-  char *rawpath = strsep(&url, " ");
+  const char *rawpath = strsep(&url, " ");
   if(!domain || !rawpath) return header(4, "invalid request");
   if(!url) return header(4, "invalid request");
 
