@@ -4,7 +4,6 @@
 #include <fcntl.h>
 #include <glob.h>
 #include <limits.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,12 +17,16 @@
 
 #include "spartan.h"
 
-struct mime {
-  char *ext;
-  char *type;
-};
+static struct request {
+  time_t time;
+  int socket;
+  int ongoing;
+  long length;
+  char *cwd;
+  char *path;
+} req;
 
-static const struct mime types[] = {
+static const char *types[][2] = {
   {".gmi", "text/gemini"},
   {".txt", "text/plain"},
   {".jpg", "image/jpeg"},
@@ -36,12 +39,12 @@ static const struct mime types[] = {
   {".m4a", "audio/mp4"},
   {".mp4", "video/mp4"},
   {".wav", "audio/wav"},
-  { 0, 0 },
+  {0, 0},
 };
 
 const char *valid = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                    "abcdefghijklmnopqrstuvwxyz0123456789"
-                    " -._~:/?#[]@!$&'()*+,;=%\r\n";
+"abcdefghijklmnopqrstuvwxyz0123456789"
+" -._~:/?#[]@!$&'()*+,;=%\r\n";
 
 const char *fallback = "application/octet-stream";
 
@@ -49,9 +52,9 @@ static const char *mime(const char *path) {
   char *ext = strrchr(path, '.');
   if(!ext)
     return fallback;
-  for (int i = 0; types[i].ext != 0; i++) {
-    if(!strcasecmp(ext, types[i].ext)) {
-      return types[i].type;
+  for (int i = 0; types[i][0] != 0; i++) {
+    if(!strcasecmp(ext, types[i][0])) {
+      return types[i][1];
     }
   }
   return fallback;
@@ -115,33 +118,33 @@ static void deliver(int server, char *buf, int len) {
   }
 }
 
-static int header(struct request *req, int status, const char *meta) {
-  if(req->ongoing) return 1;
+static int header(int status, const char *meta) {
+  if(req.ongoing) return 1;
   if(strlen(meta) > 1024) return 1;
   char buf[HEADER];
   int len = snprintf(buf, HEADER, "%d %s\r\n", status, *meta ? meta : "");
-  deliver(req->socket, buf, len);
-  req->ongoing = 1;
+  deliver(req.socket, buf, len);
+  req.ongoing = 1;
   if(status != 2)
-    syslog(LOG_WARNING, "status %d: %s from %s", status, meta, req->ip);
+    syslog(LOG_WARNING, "%s - %d: %s", req.path, status, meta);
   return 0;
 }
 
-static int file(struct request *req, char *path) {
+static int file(char *path) {
   int fd = open(path, O_RDONLY);
-  if(fd == -1) return header(req, 4, "not found");
+  if(fd == -1) return header(4, "not found");
   const char *type = mime(path);
-  header(req, 2, type);
+  header(2, type);
 
   char buf[BUFFER] = {0};
   ssize_t ret;
-  while((ret = read(fd, buf, BUFFER)) > 0) deliver(req->socket, buf, ret);
+  while((ret = read(fd, buf, BUFFER)) > 0) deliver(req.socket, buf, ret);
   if(ret == -1) errx(1, "read error: %s", strerror(errno));
   close(fd);
   return 0;
 }
 
-static void entry(const struct request *req, char *path) {
+static void entry(char *path) {
   struct stat sb = {0};
   if(stat(path, &sb) == -1) return;
   double size = sb.st_size / 1000.0;
@@ -151,47 +154,45 @@ static void entry(const struct request *req, char *path) {
   const char *type = mime(path);
   int len = snprintf(buf, PATH_MAX * 2, "=> %s %s [%s %.2f KB]\n",
       safe, path, type, size);
-  deliver(req->socket, buf, len);
+  deliver(req.socket, buf, len);
 }
 
-static int ls(struct request *req) {
+static int ls(void) {
   struct stat sb = {0};
   int ok = stat("index.gmi", &sb);
   if(!ok && S_ISREG(sb.st_mode))
-    return file(req, "index.gmi");
-  header(req, 2, "text/gemini");
+    return file("index.gmi");
+  header(2, "text/gemini");
   glob_t res;
   if(glob("*", GLOB_MARK, 0, &res)) {
     char *empty = "(*^o^*)\r\n";
-    deliver(req->socket, empty, strlen(empty));
+    deliver(req.socket, empty, strlen(empty));
     return 0;
   }
   for(size_t i = 0; i < res.gl_pathc; i++) {
-    entry(req, res.gl_pathv[i]);
+    entry(res.gl_pathv[i]);
   }
   globfree(&res);
   return 0;
 }
 
-static int cgi(struct request *req, char *path) {
+static int cgi(char *path) {
   setenv("GATEWAY_INTERFACE", "CGI/1.1", 1);
-  setenv("PATH_INFO", req->path ? req->path : "", 1);
+  setenv("PATH_INFO", req.path ? req.path : "", 1);
   setenv("SCRIPT_NAME", path ? path : "", 1);
-  setenv("REMOTE_ADDR", req->ip, 1);
-  setenv("REMOTE_HOST", req->ip, 1);
   setenv("SERVER_PROTOCOL", "spartan", 1);
 
   char len[32];
-  snprintf(len, sizeof(len), "%ld", req->length);
+  snprintf(len, sizeof(len), "%ld", req.length);
   setenv("CONTENT_LENGTH", len, 1);
 
   pid_t pid = fork();
   if(pid == -1) errx(1, "fork failed");
 
   if(!pid) {
-    dup2(req->socket, 0);
-    dup2(req->socket, 1);
-    close(req->socket);
+    dup2(req.socket, 0);
+    dup2(req.socket, 1);
+    close(req.socket);
     char *argv[] = { path, 0 };
     alarm(30);
     execv(path, argv);
@@ -203,72 +204,72 @@ static int cgi(struct request *req, char *path) {
   return 0;
 }
 
-static int route(struct request *req) {
-  if(!req->path)  {
+static int route(void) {
+  if(!req.path)  {
     char url[HEADER];
-    snprintf(url, HEADER, "%s/", req->cwd);
-    if(!strlen(url)) return header(req, 4, "invalid request");
+    snprintf(url, HEADER, "%s/", req.cwd);
+    if(!strlen(url)) return header(4, "invalid request");
     char safe[strlen(url) * 3 + 1];
     encode(url, safe);
-    return header(req, 3, safe);
+    return header(3, safe);
   }
-  if(*req->path == '\0') return ls(req);
+  if(*req.path == '\0') return ls();
 
-  char *path = strsep(&req->path, "/");
+  char *path = strsep(&req.path, "/");
   struct stat sb = {0};
   if(stat(path, &sb) == -1)
-    return header(req, 4, "not found");
+    return header(4, "not found");
   if(S_ISREG(sb.st_mode) && sb.st_mode & 0111) 
-    return cgi(req, path);
+    return cgi(path);
   if(S_ISDIR(sb.st_mode)) {
-    size_t current = strlen(req->cwd);
-    int bytes = snprintf(req->cwd + current, HEADER - current, "/%s", path);
+    size_t current = strlen(req.cwd);
+    int bytes = snprintf(req.cwd + current, HEADER - current, "/%s", path);
     if(bytes >= (int)(HEADER - current))
-      return header(req, 4, "path too long");
-    if(chdir(path)) return header(req, 4, "not found");
-    return route(req);
+      return header(4, "path too long");
+    if(chdir(path)) return header(4, "not found");
+    return route();
   }
-  return file(req, path);
+  return file(path);
 }
 
-int spartan(struct request *req, char *url, int shared) {
-  static char cwd[HEADER] = "";
-  static char path[HEADER] = {0};
+int spartan(int sock, char *url, int shared) {
+  char cwd[HEADER] = "";
+  char path[HEADER] = {0};
+
+  req.socket = sock;
 
   cwd[0] = '\0';
   memset(path, 0, HEADER);
 
   size_t eof = strspn(url, valid);
-  if(url[eof]) return header(req, 4, "invalid request");
+  if(url[eof]) return header(4, "invalid request");
 
-  if(strlen(url) >= HEADER) return header(req, 4, "not found");
-  if(strlen(url) <= 2) return header(req, 4, "not found");
+  if(strlen(url) >= HEADER) return header(4, "not found");
+  if(strlen(url) <= 2) return header(4, "not found");
   if(url[strlen(url) - 2] != '\r' || url[strlen(url) - 1] != '\n')
     return 1;
   url[strcspn(url, "\r\n")] = 0;
 
-  req->time = time(0);
+  req.time = time(0);
 
   char *domain = strsep(&url, " ");
   char *rawpath = strsep(&url, " ");
-  if(!domain || !rawpath) return header(req, 4, "invalid request");
-  if(!url) return header(req, 4, "invalid request");
+  if(!domain || !rawpath) return header(4, "invalid request");
+  if(!url) return header(4, "invalid request");
 
-  if(!shared && chdir(domain)) return header(req, 4, "not found");
+  if(!shared && chdir(domain)) return header(4, "not found");
 
   long length = strtol(url, 0, 10);
   if (length < 0)
-    return header(req, 4, "invalid request");
+    return header(4, "invalid request");
 
   decode(rawpath, path);
   if(*path != '/' || strstr(path, "..") || strstr(path, "//"))
-    return header(req, 4, "invalid request");
+    return header(4, "invalid request");
 
-  req->cwd = cwd;
-  req->path = path + 1;
-  req->length = length;
+  req.cwd = cwd;
+  req.path = path + 1;
+  req.length = length;
 
-  syslog(LOG_INFO, "spartan://%s%s %s", domain, rawpath, req->ip);
-
-  return route(req);
+  return route();
 }

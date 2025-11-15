@@ -33,24 +33,40 @@ char *port = "300";
 
 int debug = 0;
 int shared = 0;
+int lenient = 0;
 
-char *flags = "[-dhs] [-u user] [-g group] [-a address] [-p port] [-r root]";
+char *flags = "[-dhls] [-u user] [-g group] [-a address] [-p port] [-r root]";
 
 static void usage(const char *name) {
   fprintf(stderr, "usage: %s %s\n", name, flags);
 }
 
+static void help(const char *name) {
+  usage(name);
+
+  fprintf(stderr, "-d - debug mode - don't daemonize\n");
+  fprintf(stderr, "-l - lenient mode - allow cgi to create/write to files\n");
+  fprintf(stderr, "-s - shared mode - use the same root for all domains\n");
+  fprintf(stderr, "-u user - setuid to user\n");
+  fprintf(stderr, "-g group - setgid to group\n");
+  fprintf(stderr, "-a address - listen on address\n");
+  fprintf(stderr, "-a port - listen on port\n");
+  fprintf(stderr, "-a root - spartan root\n");
+}
+
 int main(int argc, char *argv[]) {
   int c;
-  while((c = getopt(argc, argv, "dhsu:g:a:p:r:")) != -1) {
+  while((c = getopt(argc, argv, "dhlsu:g:a:p:r:")) != -1) {
     switch(c) {
       case 'd': debug = 1; break;
       case 's': shared = 1; break;
+      case 'l': lenient = 1; break;
       case 'u': user = optarg; break;
       case 'g': group = optarg; break;
       case 'a': addr = optarg; break;
       case 'p': port = optarg; break;
       case 'r': root = optarg; break;
+      case 'h': help(argv[0]); exit(0);
       default: usage(argv[0]); exit(0);
     }
   }
@@ -107,9 +123,12 @@ int main(int argc, char *argv[]) {
   if(user && setuid(pwd->pw_uid)) errx(1, "setuid failed");
 
 #ifdef __OpenBSD__
-  if(!debug) daemon(0, 0);
+  if(!debug) daemon(1, 0);
   if(unveil(root, "rwxc")) errx(1, "unveil failed");
-  if(pledge("stdio inet proc exec rpath wpath cpath unix flock", 0))
+  const char *promises = "stdio inet proc exec rpath";
+  if(lenient)
+    promises = "stdio inet proc exec rpath wpath cpath flock";
+  if(pledge(promises, 0))
     errx(1, "pledge failed");
 #endif
 
@@ -129,7 +148,6 @@ int main(int argc, char *argv[]) {
       setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
       setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
 
-      struct request req = {0};
       char url[HEADER] = {0};
       ssize_t bytes = read(sock, url, HEADER - 1);
       if(bytes <= 0) {
@@ -151,15 +169,14 @@ int main(int argc, char *argv[]) {
       if(!inet_ntop(client.ss_family, ptr, ip, INET6_ADDRSTRLEN))
         errx(1, "inet_ntop failed");
 
-      req.socket = sock;
-      req.ip = ip;
-      spartan(&req, url, shared);
+      spartan(sock, url, shared);
       close(sock);
       _exit(0);
     } else {
       close(sock);
     }
   }
+
   close(server);
   closelog();
   return 0;
