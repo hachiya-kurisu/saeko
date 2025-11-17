@@ -26,8 +26,8 @@ $ rcctl start saeko
 
 ## take a sip if you understand
 
-* saeko listens on ::1
-* combine with relayd to share with the world
+* saeko listens on [::1]:300 unless told otherwise
+* bridge the gap to worlds beyond with relayd
 
 ## the spartan world
 
