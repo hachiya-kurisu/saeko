@@ -7,6 +7,13 @@ CFLAGS += -DVERSION=\"${VERSION}\"
 CFLAGS += -DNAME=\"saeko\"
 CFLAGS += -Wall -Wextra -std=c99 -pedantic -Wformat=2
 CFLAGS += -fstack-protector-strong -D_FORTIFY_SOURCE=2
+CFLAGS += -Wshadow -Wcast-align -Wstrict-prototypes
+CFLAGS += -Wwrite-strings -Wconversion -Wformat-security
+CFLAGS += -Wmissing-prototypes -Wold-style-definition
+
+LINTFLAGS += --enable=all --inconclusive --language=c --library=posix
+LINTFLAGS += --quiet --suppress=missingIncludeSystem
+LINTFLAGS += --suppress=getpwnamCalled --suppress=getgrnamCalled
 
 PREFIX ?= /usr/local
 
@@ -28,7 +35,7 @@ uninstall:
 	rm -f ${DESTDIR}/etc/rc.d/saeko
 
 lint:
-	cppcheck --enable=all --suppress=missingIncludeSystem src/*.c
+	cppcheck ${LINTFLAGS} src/*.c
 
 README.md: README.gmi
 	sisyphus -f markdown <README.gmi >README.md
