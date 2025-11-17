@@ -49,7 +49,7 @@ const char *valid = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const char *fallback = "application/octet-stream";
 
 static const char *mime(const char *path) {
-  char *ext = strrchr(path, '.');
+  const char *ext = strrchr(path, '.');
   if(!ext)
     return fallback;
   for (int i = 0; types[i][0] != 0; i++) {
@@ -68,9 +68,8 @@ static void encode(char *src, char *dst) {
   }
   static char skip[256] = {0};
   if(!skip[(int) '-']) {
-    unsigned int i;
-    for(i = 0; i < 256; i++)
-      skip[i] = strchr(valid, i) ? i : 0;
+    for(int i = 0; i < 256; i++)
+      skip[i] = strchr(valid, i) ? (char)i : 0;
   }
   for(; *s; s++) {
     if(skip[(int) *s]) snprintf(dst, 2, "%c", skip[(int) *s]), ++dst;
@@ -91,7 +90,7 @@ static int decode(const char *src, char *dst) {
     if(pos == 2) {
       if(buf[0] == '%' && isxdigit(buf[1]) && isxdigit(buf[2])) {
         sscanf(buf, "%%%2x", &decoded);
-        *dst++ = decoded;
+        *dst++ = (char)decoded;
         memset(buf, 0, 3);
         pos = 0;
       } else {
@@ -110,9 +109,9 @@ static int decode(const char *src, char *dst) {
   return 0;
 }
 
-static void deliver(int server, char *buf, int len) {
+static void deliver(int server, const char *buf, ssize_t len) {
   while(len > 0) {
-    ssize_t ret = write(server, buf, len);
+    ssize_t ret = write(server, buf, (size_t)len);
     if(ret == -1) errx(1, "write failed");
     buf += ret; len -= ret;
   }
@@ -130,7 +129,7 @@ static int header(int status, const char *meta) {
   return 0;
 }
 
-static int file(char *path) {
+static int file(const char *path) {
   int fd = open(path, O_RDONLY);
   if(fd == -1) return header(4, "not found");
   const char *type = mime(path);
@@ -138,7 +137,8 @@ static int file(char *path) {
 
   char buf[BUFFER] = {0};
   ssize_t ret;
-  while((ret = read(fd, buf, BUFFER)) > 0) deliver(req.socket, buf, ret);
+  while((ret = read(fd, buf, BUFFER)) > 0)
+    deliver(req.socket, buf, (ssize_t)ret);
   if(ret == -1) errx(1, "read error: %s", strerror(errno));
   close(fd);
   return 0;
@@ -147,7 +147,7 @@ static int file(char *path) {
 static void entry(char *path) {
   struct stat sb = {0};
   if(stat(path, &sb) == -1) return;
-  double size = sb.st_size / 1000.0;
+  double size = (double)sb.st_size / 1000.0;
   char buf[PATH_MAX * 2];
   char safe[strlen(path) * 3 + 1];
   encode(path, safe);
@@ -165,8 +165,8 @@ static int ls(void) {
   header(2, "text/gemini");
   glob_t res;
   if(glob("*", GLOB_MARK, 0, &res)) {
-    char *empty = "(*^o^*)\r\n";
-    deliver(req.socket, empty, strlen(empty));
+    const char *empty = "(*^o^*)\r\n";
+    deliver(req.socket, empty, (ssize_t)strlen(empty));
     return 0;
   }
   for(size_t i = 0; i < res.gl_pathc; i++) {
@@ -252,7 +252,7 @@ int spartan(int sock, char *url, int shared) {
 
   req.time = time(0);
 
-  char *domain = strsep(&url, " ");
+  const char *domain = strsep(&url, " ");
   const char *rawpath = strsep(&url, " ");
   if(!domain || !rawpath) return header(4, "invalid request");
   if(!url) return header(4, "invalid request");
