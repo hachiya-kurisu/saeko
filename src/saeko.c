@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <syslog.h>
 #include <time.h>
 #include <unistd.h>
@@ -22,20 +21,20 @@
 
 #include "spartan.h"
 
-const int backlog = 32;
+const int backlog = 128;
 
-char *root = "/var/spartan";
-char *user = "www";
-char *group = "www";
+const char *root = "/var/spartan";
+const char *user = "www";
+const char *group = "www";
 
-char *addr = "::1";
-char *port = "300";
+const char *addr = "::1";
+const char *port = "300";
 
 int debug = 0;
 int shared = 0;
 int lenient = 0;
 
-char *flags = "[-dhls] [-u user] [-g group] [-a address] [-p port] [-r root]";
+const char *flags = "[-dhls] [-u user] [-g group] [-a address] [-p port] [-r root]";
 
 static void usage(const char *name) {
   fprintf(stderr, "usage: %s %s\n", name, flags);
@@ -51,7 +50,7 @@ static void help(const char *name) {
   fprintf(stderr, "-g group - setgid to group\n");
   fprintf(stderr, "-a address - listen on address\n");
   fprintf(stderr, "-a port - listen on port\n");
-  fprintf(stderr, "-a root - spartan root\n");
+  fprintf(stderr, "-r root - spartan root\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -76,7 +75,7 @@ int main(int argc, char *argv[]) {
   tzset();
 
   struct addrinfo hints, *res;
-  bzero(&hints, sizeof(hints));
+  memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
@@ -106,8 +105,8 @@ int main(int argc, char *argv[]) {
 
   freeaddrinfo(res);
 
-  struct group *grp = {0};
-  struct passwd *pwd = {0};
+  const struct group *grp = {0};
+  const struct passwd *pwd = {0};
 
   if(group && !(grp = getgrnam(group)))
     errx(1, "group %s not found", group);
